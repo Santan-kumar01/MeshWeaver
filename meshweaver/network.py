@@ -27,6 +27,30 @@ class UDPNodeProtocol(asyncio.DatagramProtocol):
         print(f"[{self.node_name}] Connection closed")
 
 
+class PingClientProtocol(asyncio.DatagramProtocol):
+    def __init__(self):
+        self.transport = None
+        self.response_received = asyncio.Event()
+
+    def connection_made(self, transport):
+        self.transport = transport
+
+    def datagram_received(self, data, addr):
+        message = data.decode()
+
+        print(f"[Client] Received '{message}' from {addr}")
+
+        if message == "PONG":
+            print("[Client] PONG received successfully!")
+            self.response_received.set()
+
+    def error_received(self, exc):
+        print(f"[Client] Network error: {exc}")
+
+    def connection_lost(self, exc):
+        print("[Client] Connection closed")
+
+
 async def start_node(host: str, port: int, node_name: str):
     loop = asyncio.get_running_loop()
 
@@ -46,9 +70,11 @@ async def send_ping(
 ):
     loop = asyncio.get_running_loop()
 
+    protocol = PingClientProtocol()
+
     transport, _ = await loop.create_datagram_endpoint(
-        asyncio.DatagramProtocol,
-        local_addr=(host, 0),
+        lambda: protocol,
+        local_addr=(host, port),
     )
 
     print(f"[Client] Sending PING to {target_host}:{target_port}")
@@ -58,7 +84,13 @@ async def send_ping(
         (target_host, target_port),
     )
 
-    await asyncio.sleep(1)
+    try:
+        await asyncio.wait_for(
+            protocol.response_received.wait(),
+            timeout=5,
+        )
+    except asyncio.TimeoutError:
+        print("[Client] PONG response timed out")
 
     transport.close()
 
