@@ -49,3 +49,47 @@ def test_router_updates_peer_resource():
     assert peer.node_id in router.resources
     assert router.resources[peer.node_id].cpu_percent == 35.0
     assert router.resources[peer.node_id].ram_percent == 50.0
+
+
+def test_automatic_task_reassignment():
+    dht = KademliaDHT("node-a")
+
+    peer_a = dht.add_peer("127.0.0.1", 9001)
+    peer_b = dht.add_peer("127.0.0.1", 9002)
+
+    router = TaskRouter()
+
+    # Register healthy peer resources
+    router.update_resource(
+        peer_a.node_id,
+        cpu_percent=20.0,
+    )
+
+    router.update_resource(
+        peer_b.node_id,
+        cpu_percent=40.0,
+    )
+
+    # Assign tasks to peer A
+    assert router.assign_task(
+        "task-1",
+        peer_a,
+    )
+
+    assert router.assign_task(
+        "task-2",
+        peer_a,
+    )
+
+    # Simulate peer A failure
+    reassigned = router.reassign_tasks(
+        peer_a.node_id,
+        [peer_a, peer_b],
+    )
+
+    # Tasks should move to peer B
+    assert reassigned["task-1"] == peer_b.node_id
+    assert reassigned["task-2"] == peer_b.node_id
+
+    assert router.tasks["task-1"] == peer_b.node_id
+    assert router.tasks["task-2"] == peer_b.node_id
