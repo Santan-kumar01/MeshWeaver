@@ -1,6 +1,5 @@
 from meshweaver.dht import KademliaDHT
-from meshweaver.router import TaskRouter
-
+from meshweaver.router import TaskRouter, TaskStatus
 
 def test_router_selects_lowest_cpu_peer():
     dht = KademliaDHT("node-a")
@@ -91,5 +90,9 @@ def test_automatic_task_reassignment():
     assert reassigned["task-1"] == peer_b.node_id
     assert reassigned["task-2"] == peer_b.node_id
 
-    assert router.tasks["task-1"] == peer_b.node_id
-    assert router.tasks["task-2"] == peer_b.node_id
+    # Verify task lifecycle state
+    assert router.tasks["task-1"].peer_id == peer_b.node_id
+    assert router.tasks["task-2"].peer_id == peer_b.node_id
+
+    assert router.tasks["task-1"].status == TaskStatus.REASSIGNED
+    assert router.tasks["task-2"].status == TaskStatus.REASSIGNED
