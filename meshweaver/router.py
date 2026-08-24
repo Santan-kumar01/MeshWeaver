@@ -1,7 +1,19 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Optional
 
 from meshweaver.dht import Peer
+
+
+class TaskStatus(Enum):
+    """Possible states of a task."""
+
+    PENDING = "pending"
+    ASSIGNED = "assigned"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    REASSIGNED = "reassigned"
 
 
 @dataclass
@@ -12,8 +24,17 @@ class PeerResource:
     ram_percent: float = 0.0
 
 
+@dataclass
+class Task:
+    """Task information and lifecycle state."""
+
+    task_id: str
+    status: TaskStatus = TaskStatus.PENDING
+    peer_id: Optional[str] = None
+
+
 class TaskRouter:
-    """Route tasks using CPU-aware peer selection and failure recovery."""
+    """Route tasks using CPU-aware selection and lifecycle management."""
 
     def __init__(self):
         self.resources = {}
@@ -51,6 +72,14 @@ class TaskRouter:
             ].cpu_percent,
         )
 
+    def create_task(self, task_id: str) -> Task:
+        """Create a new pending task."""
+
+        task = Task(task_id=task_id)
+        self.tasks[task_id] = task
+
+        return task
+
     def assign_task(
         self,
         task_id: str,
@@ -58,12 +87,65 @@ class TaskRouter:
     ) -> bool:
         """Assign a task to a peer."""
 
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            task = self.create_task(task_id)
+
         if peer.node_id not in self.resources:
             return False
 
-        self.tasks[task_id] = peer.node_id
+        task.peer_id = peer.node_id
+        task.status = TaskStatus.ASSIGNED
 
         return True
+
+    def start_task(self, task_id: str) -> bool:
+        """Mark an assigned task as running."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return False
+
+        if task.status != TaskStatus.ASSIGNED:
+            return False
+
+        task.status = TaskStatus.RUNNING
+
+        return True
+
+    def complete_task(self, task_id: str) -> bool:
+        """Mark a running task as completed."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return False
+
+        if task.status != TaskStatus.RUNNING:
+            return False
+
+        task.status = TaskStatus.COMPLETED
+
+        return True
+
+    def fail_task(self, task_id: str) -> bool:
+        """Mark a task as failed."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return False
+
+        task.status = TaskStatus.FAILED
+
+        return True
+
+    def get_task(self, task_id: str) -> Optional[Task]:
+        """Return task information."""
+
+        return self.tasks.get(task_id)
 
     def remove_peer(self, peer_id: str):
         """Remove a failed peer from resource tracking."""
@@ -77,26 +159,23 @@ class TaskRouter:
     ) -> dict[str, str]:
         """Reassign tasks from a failed peer."""
 
-        # Remove failed peer
         self.remove_peer(failed_peer_id)
 
         reassigned = {}
 
-        # Find tasks assigned to failed peer
-        for task_id, assigned_peer_id in list(
-            self.tasks.items()
-        ):
-            if assigned_peer_id != failed_peer_id:
+        for task_id, task in self.tasks.items():
+
+            if task.peer_id != failed_peer_id:
                 continue
 
-            # Select another healthy peer
             new_peer = self.select_peer(peers)
 
             if new_peer is None:
+                task.status = TaskStatus.FAILED
                 continue
 
-            # Reassign task
-            self.tasks[task_id] = new_peer.node_id
+            task.peer_id = new_peer.node_id
+            task.status = TaskStatus.REASSIGNED
 
             reassigned[task_id] = new_peer.node_id
 
