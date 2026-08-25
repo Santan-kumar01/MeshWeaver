@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Any, Callable, Optional
 
 from meshweaver.dht import Peer
 
@@ -31,10 +31,12 @@ class Task:
     task_id: str
     status: TaskStatus = TaskStatus.PENDING
     peer_id: Optional[str] = None
+    result: Any = None
+    error: Optional[str] = None
 
 
 class TaskRouter:
-    """Route tasks using CPU-aware selection and lifecycle management."""
+    """Route and execute tasks with lifecycle management."""
 
     def __init__(self):
         self.resources = {}
@@ -115,7 +117,41 @@ class TaskRouter:
 
         return True
 
-    def complete_task(self, task_id: str) -> bool:
+    def execute_task(
+        self,
+        task_id: str,
+        function: Callable,
+        *args,
+        **kwargs,
+    ) -> bool:
+        """Execute a task and store its result."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return False
+
+        if task.status != TaskStatus.ASSIGNED:
+            return False
+
+        task.status = TaskStatus.RUNNING
+        task.error = None
+
+        try:
+            task.result = function(*args, **kwargs)
+            task.status = TaskStatus.COMPLETED
+            return True
+
+        except Exception as exc:
+            task.error = str(exc)
+            task.status = TaskStatus.FAILED
+            return False
+
+    def complete_task(
+        self,
+        task_id: str,
+        result: Any = None,
+    ) -> bool:
         """Mark a running task as completed."""
 
         task = self.tasks.get(task_id)
@@ -126,11 +162,16 @@ class TaskRouter:
         if task.status != TaskStatus.RUNNING:
             return False
 
+        task.result = result
         task.status = TaskStatus.COMPLETED
 
         return True
 
-    def fail_task(self, task_id: str) -> bool:
+    def fail_task(
+        self,
+        task_id: str,
+        error: Optional[str] = None,
+    ) -> bool:
         """Mark a task as failed."""
 
         task = self.tasks.get(task_id)
@@ -138,6 +179,7 @@ class TaskRouter:
         if task is None:
             return False
 
+        task.error = error
         task.status = TaskStatus.FAILED
 
         return True
@@ -146,6 +188,16 @@ class TaskRouter:
         """Return task information."""
 
         return self.tasks.get(task_id)
+
+    def get_task_result(self, task_id: str):
+        """Return the result of a completed task."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return None
+
+        return task.result
 
     def remove_peer(self, peer_id: str):
         """Remove a failed peer from resource tracking."""
