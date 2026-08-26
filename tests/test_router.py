@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional
+import time
 
 from meshweaver.dht import Peer
 
@@ -14,6 +15,7 @@ class TaskStatus(Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     REASSIGNED = "reassigned"
+    TIMEOUT = "timeout"
 
 
 @dataclass
@@ -33,10 +35,16 @@ class Task:
     peer_id: Optional[str] = None
     result: Any = None
     error: Optional[str] = None
+    retry_count: int = 0
+    max_retries: int = 3
+    started_at: Optional[float] = None
+    timeout: float = 30.0
 
 
 class TaskRouter:
-    """Route tasks using CPU-aware selection and lifecycle management."""
+    """Route tasks using CPU-aware selection,
+    lifecycle management, timeout detection and retries.
+    """
 
     def __init__(self):
         self.resources = {}
@@ -55,7 +63,10 @@ class TaskRouter:
             ram_percent=ram_percent,
         )
 
-    def select_peer(self, peers: list[Peer]) -> Optional[Peer]:
+    def select_peer(
+        self,
+        peers: list[Peer],
+    ) -> Optional[Peer]:
         """Select the peer with the lowest CPU usage."""
 
         available_peers = [
@@ -74,10 +85,20 @@ class TaskRouter:
             ].cpu_percent,
         )
 
-    def create_task(self, task_id: str) -> Task:
+    def create_task(
+        self,
+        task_id: str,
+        max_retries: int = 3,
+        timeout: float = 30.0,
+    ) -> Task:
         """Create a new pending task."""
 
-        task = Task(task_id=task_id)
+        task = Task(
+            task_id=task_id,
+            max_retries=max_retries,
+            timeout=timeout,
+        )
+
         self.tasks[task_id] = task
 
         return task
@@ -103,7 +124,10 @@ class TaskRouter:
 
         return True
 
-    def start_task(self, task_id: str) -> bool:
+    def start_task(
+        self,
+        task_id: str,
+    ) -> bool:
         """Mark an assigned task as running."""
 
         task = self.tasks.get(task_id)
@@ -115,6 +139,8 @@ class TaskRouter:
             return False
 
         task.status = TaskStatus.RUNNING
+        task.started_at = time.monotonic()
+        task.error = None
 
         return True
 
@@ -136,6 +162,7 @@ class TaskRouter:
         task.status = TaskStatus.COMPLETED
         task.result = result
         task.error = None
+        task.started_at = None
 
         return True
 
@@ -153,15 +180,22 @@ class TaskRouter:
 
         task.status = TaskStatus.FAILED
         task.error = error
+        task.started_at = None
 
         return True
 
-    def get_task(self, task_id: str) -> Optional[Task]:
+    def get_task(
+        self,
+        task_id: str,
+    ) -> Optional[Task]:
         """Return task information."""
 
         return self.tasks.get(task_id)
 
-    def get_task_result(self, task_id: str) -> Any:
+    def get_task_result(
+        self,
+        task_id: str,
+    ) -> Any:
         """Return the result of a completed task."""
 
         task = self.tasks.get(task_id)
@@ -174,7 +208,10 @@ class TaskRouter:
 
         return task.result
 
-    def get_task_error(self, task_id: str) -> Optional[str]:
+    def get_task_error(
+        self,
+        task_id: str,
+    ) -> Optional[str]:
         """Return the error of a failed task."""
 
         task = self.tasks.get(task_id)
@@ -184,7 +221,10 @@ class TaskRouter:
 
         return task.error
 
-    def remove_peer(self, peer_id: str):
+    def remove_peer(
+        self,
+        peer_id: str,
+    ):
         """Remove a failed peer from resource tracking."""
 
         self.resources.pop(peer_id, None)
@@ -209,13 +249,111 @@ class TaskRouter:
 
             if new_peer is None:
                 task.status = TaskStatus.FAILED
-                task.error = "No available peer for reassignment"
+                task.error = (
+                    "No available peer for reassignment"
+                )
                 continue
 
             task.peer_id = new_peer.node_id
             task.status = TaskStatus.REASSIGNED
             task.error = None
+            task.started_at = None
 
             reassigned[task_id] = new_peer.node_id
 
         return reassigned
+
+    def check_timeouts(self) -> list[str]:
+        """Detect running tasks that exceeded their timeout."""
+
+        current_time = time.monotonic()
+        timed_out = []
+
+        for task_id, task in self.tasks.items():
+
+            if task.status != TaskStatus.RUNNING:
+                continue
+
+            if task.started_at is None:
+                continue
+
+            elapsed = current_time - task.started_at
+
+            if elapsed >= task.timeout:
+                task.status = TaskStatus.TIMEOUT
+                task.error = "Task execution timed out"
+                task.started_at = None
+
+                timed_out.append(task_id)
+
+        return timed_out
+
+    def retry_task(
+        self,
+        task_id: str,
+        peers: list[Peer],
+    ) -> bool:
+        """Retry a timed-out or failed task."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return False
+
+        if task.retry_count >= task.max_retries:
+            task.status = TaskStatus.FAILED
+            task.error = "Maximum retry limit reached"
+            return False
+
+        if task.status not in (
+            TaskStatus.TIMEOUT,
+            TaskStatus.FAILED,
+        ):
+            return False
+
+        peer = self.select_peer(peers)
+
+        if peer is None:
+            task.status = TaskStatus.FAILED
+            task.error = "No available peer for retry"
+            return False
+
+        task.retry_count += 1
+        task.peer_id = peer.node_id
+        task.status = TaskStatus.REASSIGNED
+        task.error = None
+        task.started_at = None
+
+        return True
+
+    def retry_timed_out_tasks(
+        self,
+        peers: list[Peer],
+    ) -> list[str]:
+        """Check timeouts and retry eligible tasks."""
+
+        timed_out_tasks = self.check_timeouts()
+        retried_tasks = []
+
+        for task_id in timed_out_tasks:
+
+            if self.retry_task(
+                task_id,
+                peers,
+            ):
+                retried_tasks.append(task_id)
+
+        return retried_tasks
+
+    def get_retry_count(
+        self,
+        task_id: str,
+    ) -> int:
+        """Return the current retry count."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return 0
+
+        return task.retry_count
