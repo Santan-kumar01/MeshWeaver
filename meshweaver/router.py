@@ -1,6 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 import time
 
 from meshweaver.dht import Peer
@@ -16,7 +16,6 @@ class TaskStatus(Enum):
     FAILED = "failed"
     REASSIGNED = "reassigned"
     TIMEOUT = "timeout"
-    RETRYING = "retrying"
 
 
 @dataclass
@@ -28,22 +27,44 @@ class PeerResource:
 
 
 @dataclass
+class ExecutionRecord:
+    """Historical record of one task execution."""
+
+    task_id: str
+    peer_id: Optional[str]
+    status: TaskStatus
+    started_at: Optional[float]
+    finished_at: Optional[float]
+    result: Any = None
+    error: Optional[str] = None
+    retry_count: int = 0
+
+
+@dataclass
 class Task:
     """Task information and lifecycle state."""
 
     task_id: str
     status: TaskStatus = TaskStatus.PENDING
     peer_id: Optional[str] = None
-    result: Optional[object] = None
+    result: Any = None
     error: Optional[str] = None
     retry_count: int = 0
     max_retries: int = 3
     started_at: Optional[float] = None
+    finished_at: Optional[float] = None
     timeout: float = 30.0
+
+    history: list[ExecutionRecord] = field(
+        default_factory=list
+    )
 
 
 class TaskRouter:
-    """Route tasks with lifecycle, timeout and retry management."""
+    """Route tasks using CPU-aware selection,
+    lifecycle management, timeout, retry,
+    result persistence and execution history.
+    """
 
     def __init__(self):
         self.resources = {}
@@ -62,7 +83,10 @@ class TaskRouter:
             ram_percent=ram_percent,
         )
 
-    def select_peer(self, peers: list[Peer]) -> Optional[Peer]:
+    def select_peer(
+        self,
+        peers: list[Peer],
+    ) -> Optional[Peer]:
         """Select the peer with the lowest CPU usage."""
 
         available_peers = [
@@ -120,8 +144,11 @@ class TaskRouter:
 
         return True
 
-    def start_task(self, task_id: str) -> bool:
-        """Start an assigned task."""
+    def start_task(
+        self,
+        task_id: str,
+    ) -> bool:
+        """Mark an assigned task as running."""
 
         task = self.tasks.get(task_id)
 
@@ -133,15 +160,17 @@ class TaskRouter:
 
         task.status = TaskStatus.RUNNING
         task.started_at = time.monotonic()
+        task.finished_at = None
+        task.error = None
 
         return True
 
     def complete_task(
         self,
         task_id: str,
-        result=None,
+        result: Any = None,
     ) -> bool:
-        """Complete a running task and store its result."""
+        """Complete a running task and persist its result."""
 
         task = self.tasks.get(task_id)
 
@@ -153,16 +182,19 @@ class TaskRouter:
 
         task.status = TaskStatus.COMPLETED
         task.result = result
-        task.started_at = None
+        task.error = None
+        task.finished_at = time.monotonic()
+
+        self._save_execution_history(task)
 
         return True
 
     def fail_task(
         self,
         task_id: str,
-        error: str = "Task execution failed",
+        error: Optional[str] = None,
     ) -> bool:
-        """Mark a task as failed."""
+        """Mark a task as failed and persist the error."""
 
         task = self.tasks.get(task_id)
 
@@ -171,66 +203,98 @@ class TaskRouter:
 
         task.status = TaskStatus.FAILED
         task.error = error
-        task.started_at = None
+        task.finished_at = time.monotonic()
+
+        self._save_execution_history(task)
 
         return True
 
-    def check_timeout(self, task_id: str) -> bool:
-        """Check whether a running task has exceeded its timeout."""
+    def _save_execution_history(
+        self,
+        task: Task,
+    ):
+        """Save the current execution state to history."""
 
-        task = self.tasks.get(task_id)
+        record = ExecutionRecord(
+            task_id=task.task_id,
+            peer_id=task.peer_id,
+            status=task.status,
+            started_at=task.started_at,
+            finished_at=task.finished_at,
+            result=task.result,
+            error=task.error,
+            retry_count=task.retry_count,
+        )
 
-        if task is None:
-            return False
+        task.history.append(record)
 
-        if task.status != TaskStatus.RUNNING:
-            return False
-
-        if task.started_at is None:
-            return False
-
-        elapsed = time.monotonic() - task.started_at
-
-        if elapsed < task.timeout:
-            return False
-
-        task.status = TaskStatus.TIMEOUT
-        task.error = "Task execution timed out"
-        task.started_at = None
-
-        return True
-
-    def retry_task(self, task_id: str) -> bool:
-        """Retry a timed-out or failed task."""
-
-        task = self.tasks.get(task_id)
-
-        if task is None:
-            return False
-
-        if task.status not in (
-            TaskStatus.TIMEOUT,
-            TaskStatus.FAILED,
-        ):
-            return False
-
-        if task.retry_count >= task.max_retries:
-            task.status = TaskStatus.FAILED
-            task.error = "Maximum retry limit exceeded"
-            return False
-
-        task.retry_count += 1
-        task.status = TaskStatus.RETRYING
-        task.error = None
-
-        return True
-
-    def get_task(self, task_id: str) -> Optional[Task]:
+    def get_task(
+        self,
+        task_id: str,
+    ) -> Optional[Task]:
         """Return task information."""
 
         return self.tasks.get(task_id)
 
-    def remove_peer(self, peer_id: str):
+    def get_task_result(
+        self,
+        task_id: str,
+    ) -> Any:
+        """Return the persisted result of a completed task."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return None
+
+        if task.status != TaskStatus.COMPLETED:
+            return None
+
+        return task.result
+
+    def get_task_error(
+        self,
+        task_id: str,
+    ) -> Optional[str]:
+        """Return the error of a failed task."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return None
+
+        return task.error
+
+    def get_execution_history(
+        self,
+        task_id: str,
+    ) -> list[ExecutionRecord]:
+        """Return complete execution history of a task."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return []
+
+        return list(task.history)
+
+    def get_latest_execution(
+        self,
+        task_id: str,
+    ) -> Optional[ExecutionRecord]:
+        """Return the latest execution record."""
+
+        history = self.get_execution_history(task_id)
+
+        if not history:
+            return None
+
+        return history[-1]
+
+    def remove_peer(
+        self,
+        peer_id: str,
+    ):
         """Remove a failed peer from resource tracking."""
 
         self.resources.pop(peer_id, None)
@@ -255,12 +319,121 @@ class TaskRouter:
 
             if new_peer is None:
                 task.status = TaskStatus.FAILED
-                task.error = "No available peer"
+                task.error = (
+                    "No available peer for reassignment"
+                )
+                task.finished_at = time.monotonic()
                 continue
 
             task.peer_id = new_peer.node_id
             task.status = TaskStatus.REASSIGNED
+            task.error = None
+            task.started_at = None
 
             reassigned[task_id] = new_peer.node_id
 
         return reassigned
+
+    def check_timeouts(self) -> list[str]:
+        """Detect running tasks that exceeded their timeout."""
+
+        current_time = time.monotonic()
+        timed_out = []
+
+        for task_id, task in self.tasks.items():
+
+            if task.status != TaskStatus.RUNNING:
+                continue
+
+            if task.started_at is None:
+                continue
+
+            elapsed = current_time - task.started_at
+
+            if elapsed >= task.timeout:
+                task.status = TaskStatus.TIMEOUT
+                task.error = "Task execution timed out"
+                task.finished_at = current_time
+
+                self._save_execution_history(task)
+
+                task.started_at = None
+
+                timed_out.append(task_id)
+
+        return timed_out
+
+    def retry_task(
+        self,
+        task_id: str,
+        peers: list[Peer],
+    ) -> bool:
+        """Retry a timed-out or failed task."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return False
+
+        if task.retry_count >= task.max_retries:
+            task.status = TaskStatus.FAILED
+            task.error = "Maximum retry limit reached"
+            task.finished_at = time.monotonic()
+
+            return False
+
+        if task.status not in (
+            TaskStatus.TIMEOUT,
+            TaskStatus.FAILED,
+        ):
+            return False
+
+        peer = self.select_peer(peers)
+
+        if peer is None:
+            task.status = TaskStatus.FAILED
+            task.error = "No available peer for retry"
+            task.finished_at = time.monotonic()
+
+            return False
+
+        task.retry_count += 1
+        task.peer_id = peer.node_id
+        task.status = TaskStatus.REASSIGNED
+        task.error = None
+        task.started_at = None
+        task.finished_at = None
+
+        return True
+
+    def retry_timed_out_tasks(
+        self,
+        peers: list[Peer],
+    ) -> list[str]:
+        """Check timeouts and retry eligible tasks."""
+
+        timed_out_tasks = self.check_timeouts()
+        retried_tasks = []
+
+        for task_id in timed_out_tasks:
+
+            if self.retry_task(
+                task_id,
+                peers,
+            ):
+                retried_tasks.append(task_id)
+
+        return retried_tasks
+
+    def get_retry_count(
+        self,
+        task_id: str,
+    ) -> int:
+        """Return the current retry count."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return 0
+
+        return task.retry_count
