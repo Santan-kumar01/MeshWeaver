@@ -61,9 +61,8 @@ class Task:
 
 
 class TaskRouter:
-    """Route tasks using CPU-aware selection,
-    lifecycle management, timeout, retry,
-    result persistence and execution history.
+    """Route tasks using CPU-aware selection, lifecycle management,
+    timeout, retry, result persistence and execution history.
     """
 
     def __init__(self):
@@ -209,6 +208,43 @@ class TaskRouter:
 
         return True
 
+    def record_execution(
+        self,
+        task_id: str,
+        status: TaskStatus,
+        peer_id: Optional[str] = None,
+        started_at: Optional[float] = None,
+        finished_at: Optional[float] = None,
+        result: Any = None,
+        error: Optional[str] = None,
+        retry_count: int = 0,
+    ) -> Optional[ExecutionRecord]:
+        """Record an execution attempt in task history."""
+
+        task = self.tasks.get(task_id)
+
+        if task is None:
+            return None
+
+        record = ExecutionRecord(
+            task_id=task_id,
+            peer_id=(
+                peer_id
+                if peer_id is not None
+                else task.peer_id
+            ),
+            status=status,
+            started_at=started_at,
+            finished_at=finished_at,
+            result=result,
+            error=error,
+            retry_count=retry_count,
+        )
+
+        task.history.append(record)
+
+        return record
+
     def _save_execution_history(
         self,
         task: Task,
@@ -323,6 +359,7 @@ class TaskRouter:
                     "No available peer for reassignment"
                 )
                 task.finished_at = time.monotonic()
+
                 continue
 
             task.peer_id = new_peer.node_id
