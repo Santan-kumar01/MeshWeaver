@@ -61,8 +61,9 @@ class Task:
 
 
 class TaskRouter:
-    """Route tasks using CPU-aware selection, lifecycle management,
-    timeout, retry, result persistence and execution history.
+    """Route tasks using CPU-aware selection, lifecycle
+    management, timeout, retry, result persistence,
+    execution history, and task queue integration.
     """
 
     def __init__(self):
@@ -142,6 +143,32 @@ class TaskRouter:
         task.error = None
 
         return True
+
+    def dispatch_next_task(
+        self,
+        task_queue,
+        peers: list[Peer],
+    ) -> Optional[Peer]:
+        """Dispatch the next queued task to the
+        least-loaded available peer.
+        """
+
+        task_id = task_queue.get_next_task()
+
+        if task_id is None:
+            return None
+
+        peer = self.select_peer(peers)
+
+        if peer is None:
+            return None
+
+        if not self.assign_task(task_id, peer):
+            return None
+
+        task_queue.remove_task(task_id)
+
+        return peer
 
     def start_task(
         self,
