@@ -113,3 +113,8 @@ class TaskPriorityQueue:
             )
 
         return self.PRIORITY_LEVELS[priority]
+
+    def __len__(self) -> int:
+        """Return the number of tasks in the queue."""
+
+        return len(self._queue)

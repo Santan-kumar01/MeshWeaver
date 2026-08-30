@@ -128,3 +128,14 @@ def test_get_priority_rejects_invalid_priority():
         assert False
     except ValueError:
         assert True
+
+
+def test_len_returns_queue_size():
+    queue = TaskPriorityQueue()
+
+    assert len(queue) == 0
+
+    queue.add_task(Task("task-1"), "HIGH")
+    queue.add_task(Task("task-2"), "LOW")
+
+    assert len(queue) == 2
