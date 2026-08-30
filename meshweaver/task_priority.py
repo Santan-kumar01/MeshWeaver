@@ -118,3 +118,28 @@ class TaskPriorityQueue:
         """Return the number of tasks in the queue."""
 
         return len(self._queue)
+
+    def set_priority(self, task_id: str, priority: str) -> bool:
+        """Change the priority of an existing task."""
+
+        priority = priority.upper()
+
+        if priority not in self.PRIORITY_LEVELS:
+            return False
+
+        for index, (_, sequence, task) in enumerate(self._queue):
+            if task.task_id == task_id:
+                self._queue.pop(index)
+
+                new_priority = self.PRIORITY_LEVELS[priority]
+
+                heappush(
+                    self._queue,
+                    (new_priority, sequence, task),
+                )
+
+                self._task_ids.add(task_id)
+
+                return True
+
+        return False
