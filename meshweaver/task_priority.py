@@ -193,7 +193,6 @@ class TaskPriorityQueue:
                 remaining_tasks.append(item)
 
         self._queue = remaining_tasks
-
         heapify(self._queue)
 
         return removed_count
@@ -234,3 +233,18 @@ class TaskPriorityQueue:
             for item in self._queue
             if item[0] == priority_level
         ]
+
+    def has_priority(self, priority: str) -> bool:
+        """Return True if at least one task has the given priority."""
+
+        priority = priority.upper()
+
+        if priority not in self.PRIORITY_LEVELS:
+            return False
+
+        priority_level = self.PRIORITY_LEVELS[priority]
+
+        return any(
+            item[0] == priority_level
+            for item in self._queue
+        )

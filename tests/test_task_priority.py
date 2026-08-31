@@ -368,3 +368,43 @@ def test_get_tasks_by_priority_invalid_priority():
     queue.add_task(Task("task-1"), "HIGH")
 
     assert queue.get_tasks_by_priority("URGENT") == []
+
+
+def test_has_priority():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task("high-task"), "HIGH")
+    queue.add_task(Task("low-task"), "LOW")
+
+    assert queue.has_priority("HIGH") is True
+    assert queue.has_priority("LOW") is True
+    assert queue.has_priority("MEDIUM") is False
+
+
+def test_has_priority_is_case_insensitive():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task("high-task"), "HIGH")
+
+    assert queue.has_priority("high") is True
+    assert queue.has_priority("High") is True
+
+
+def test_has_priority_invalid_priority():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task("task-1"), "HIGH")
+
+    assert queue.has_priority("URGENT") is False
+
+
+def test_has_priority_after_removing_tasks():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task("high-task"), "HIGH")
+
+    assert queue.has_priority("HIGH") is True
+
+    queue.remove_task("high-task")
+
+    assert queue.has_priority("HIGH") is False
