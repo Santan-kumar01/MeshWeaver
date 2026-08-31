@@ -152,8 +152,6 @@ def test_set_priority_changes_task_priority():
 
     assert queue.set_priority("low-task", "HIGH") is True
 
-    # The existing HIGH task was already inserted first,
-    # so FIFO ordering is preserved among HIGH-priority tasks.
     assert queue.pop_task().task_id == "high-task"
     assert queue.pop_task().task_id == "low-task"
 
@@ -248,3 +246,21 @@ def test_remove_by_priority_invalid_priority():
 
     assert removed == 0
     assert queue.size() == 1
+
+
+def test_validate_priority_accepts_valid_priority():
+    queue = TaskPriorityQueue()
+
+    assert queue._validate_priority("HIGH") == "HIGH"
+    assert queue._validate_priority("medium") == "MEDIUM"
+    assert queue._validate_priority("low") == "LOW"
+
+
+def test_validate_priority_rejects_invalid_priority():
+    queue = TaskPriorityQueue()
+
+    try:
+        queue._validate_priority("URGENT")
+        assert False
+    except ValueError:
+        assert True

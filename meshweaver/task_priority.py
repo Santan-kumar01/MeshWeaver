@@ -23,6 +23,19 @@ class TaskPriorityQueue:
         self._task_ids = set()
         self._counter = count()
 
+    def _validate_priority(self, priority: str) -> str:
+        """Validate and normalize a priority value."""
+
+        priority = priority.upper()
+
+        if priority not in self.PRIORITY_LEVELS:
+            raise ValueError(
+                f"Invalid priority: {priority}. "
+                f"Expected HIGH, MEDIUM, or LOW."
+            )
+
+        return priority
+
     def add_task(self, task: Task, priority: str = "MEDIUM") -> bool:
         """Add a task with HIGH, MEDIUM, or LOW priority."""
 
@@ -104,13 +117,7 @@ class TaskPriorityQueue:
     def get_priority(self, priority: str) -> int:
         """Return the internal priority value."""
 
-        priority = priority.upper()
-
-        if priority not in self.PRIORITY_LEVELS:
-            raise ValueError(
-                f"Invalid priority: {priority}. "
-                f"Expected HIGH, MEDIUM, or LOW."
-            )
+        priority = self._validate_priority(priority)
 
         return self.PRIORITY_LEVELS[priority]
 
@@ -132,9 +139,6 @@ class TaskPriorityQueue:
                 self._queue.pop(index)
 
                 priority_level = self.PRIORITY_LEVELS[priority]
-
-                # Preserve the original sequence number so changing
-                # priority does not incorrectly change FIFO behavior.
                 sequence = next(self._counter)
 
                 heappush(
