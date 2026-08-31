@@ -139,3 +139,126 @@ def test_len_returns_queue_size():
     queue.add_task(Task("task-2"), "LOW")
 
     assert len(queue) == 2
+
+
+def test_set_priority_changes_task_priority():
+    queue = TaskPriorityQueue()
+
+    low_task = Task("low-task")
+    high_task = Task("high-task")
+
+    queue.add_task(low_task, "LOW")
+    queue.add_task(high_task, "HIGH")
+
+    assert queue.set_priority("low-task", "HIGH") is True
+    assert queue.pop_task().task_id == "low-task"
+
+
+def test_set_priority_invalid_priority():
+    queue = TaskPriorityQueue()
+
+    task = Task("task-1")
+
+    queue.add_task(task, "LOW")
+
+    assert queue.set_priority("task-1", "URGENT") is False
+    assert queue.get_task_priority("task-1") == "LOW"
+
+
+def test_set_priority_unknown_task():
+    queue = TaskPriorityQueue()
+
+    assert queue.set_priority("unknown", "HIGH") is False
+
+
+def test_get_task_priority():
+    queue = TaskPriorityQueue()
+
+    high_task = Task("high-task")
+    low_task = Task("low-task")
+
+    queue.add_task(high_task, "HIGH")
+    queue.add_task(low_task, "LOW")
+
+    assert queue.get_task_priority("high-task") == "HIGH"
+    assert queue.get_task_priority("low-task") == "LOW"
+    assert queue.get_task_priority("unknown") is None
+
+
+def test_peek_task_returns_highest_priority_without_removing():
+    queue = TaskPriorityQueue()
+
+    low_task = Task("low-task")
+    high_task = Task("high-task")
+
+    queue.add_task(low_task, "LOW")
+    queue.add_task(high_task, "HIGH")
+
+    task = queue.peek_task()
+
+    assert task is not None
+    assert task.task_id == "high-task"
+    assert queue.size() == 2
+
+
+def test_peek_task_returns_none_for_empty_queue():
+    queue = TaskPriorityQueue()
+
+    assert queue.peek_task() is None
+
+
+def test_get_tasks_by_priority():
+    queue = TaskPriorityQueue()
+
+    high_task1 = Task("high-1")
+    high_task2 = Task("high-2")
+    low_task = Task("low-1")
+
+    queue.add_task(high_task1, "HIGH")
+    queue.add_task(low_task, "LOW")
+    queue.add_task(high_task2, "HIGH")
+
+    high_tasks = queue.get_tasks_by_priority("HIGH")
+
+    assert len(high_tasks) == 2
+    assert high_tasks[0].task_id == "high-1"
+    assert high_tasks[1].task_id == "high-2"
+
+
+def test_get_tasks_by_priority_is_case_insensitive():
+    queue = TaskPriorityQueue()
+
+    task = Task("task-1")
+
+    queue.add_task(task, "HIGH")
+
+    result = queue.get_tasks_by_priority("high")
+
+    assert len(result) == 1
+    assert result[0].task_id == "task-1"
+
+
+def test_get_tasks_by_priority_invalid_priority():
+    queue = TaskPriorityQueue()
+
+    try:
+        queue.get_tasks_by_priority("URGENT")
+        assert False
+    except ValueError:
+        assert True
+
+
+def test_get_tasks_by_priority_does_not_remove_tasks():
+    queue = TaskPriorityQueue()
+
+    task1 = Task("task-1")
+    task2 = Task("task-2")
+
+    queue.add_task(task1, "HIGH")
+    queue.add_task(task2, "LOW")
+
+    result = queue.get_tasks_by_priority("HIGH")
+
+    assert len(result) == 1
+    assert result[0].task_id == "task-1"
+    assert queue.size() == 2

@@ -54,6 +54,14 @@ class TaskPriorityQueue:
 
         return self._queue[0][2]
 
+    def peek_task(self) -> Optional[Task]:
+        """Return the highest-priority task without removing it."""
+
+        if not self._queue:
+            return None
+
+        return self._queue[0][2]
+
     def pop_task(self) -> Optional[Task]:
         """Remove and return the highest-priority task."""
 
@@ -86,7 +94,7 @@ class TaskPriorityQueue:
         return task_id in self._task_ids
 
     def is_empty(self) -> bool:
-        """Return True if the queue is empty."""
+        """Return whether the queue is empty."""
 
         return len(self._queue) == 0
 
@@ -118,3 +126,60 @@ class TaskPriorityQueue:
         """Return the number of tasks in the queue."""
 
         return len(self._queue)
+
+    def set_priority(self, task_id: str, priority: str) -> bool:
+        """Change the priority of an existing task.
+
+        The original sequence number is preserved so that changing
+        priority does not change the task's FIFO position.
+        """
+
+        priority = priority.upper()
+
+        if priority not in self.PRIORITY_LEVELS:
+            return False
+
+        for index, (_, sequence, task) in enumerate(self._queue):
+            if task.task_id == task_id:
+                self._queue.pop(index)
+
+                priority_level = self.PRIORITY_LEVELS[priority]
+
+                heappush(
+                    self._queue,
+                    (priority_level, sequence, task),
+                )
+
+                return True
+
+        return False
+
+    def get_task_priority(self, task_id: str) -> Optional[str]:
+        """Return the priority of a task by its ID."""
+
+        for priority_level, _, task in self._queue:
+            if task.task_id == task_id:
+                for priority, level in self.PRIORITY_LEVELS.items():
+                    if level == priority_level:
+                        return priority
+
+        return None
+
+    def get_tasks_by_priority(self, priority: str):
+        """Return all tasks with the given priority without removing them."""
+
+        priority = priority.upper()
+
+        if priority not in self.PRIORITY_LEVELS:
+            raise ValueError(
+                f"Invalid priority: {priority}. "
+                f"Expected HIGH, MEDIUM, or LOW."
+            )
+
+        priority_level = self.PRIORITY_LEVELS[priority]
+
+        return [
+            task
+            for level, _, task in self._queue
+            if level == priority_level
+        ]
