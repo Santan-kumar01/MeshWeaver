@@ -139,3 +139,16 @@ def test_len_returns_queue_size():
     queue.add_task(Task("task-2"), "LOW")
 
     assert len(queue) == 2
+
+
+def test_set_priority_changes_task_priority():
+    queue = TaskPriorityQueue()
+
+    low_task = Task("low-task")
+    high_task = Task("high-task")
+
+    queue.add_task(low_task, "LOW")
+    queue.add_task(high_task, "HIGH")
+
+    assert queue.set_priority("low-task", "HIGH") is True
+    assert queue.pop_task().task_id == "low-task"
