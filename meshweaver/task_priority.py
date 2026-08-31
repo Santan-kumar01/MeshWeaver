@@ -213,3 +213,24 @@ class TaskPriorityQueue:
             for item in self._queue
             if item[0] == priority_level
         )
+
+    def get_task_ids(self):
+        """Return all task IDs currently in the queue."""
+
+        return [item[2].task_id for item in self._queue]
+
+    def get_tasks_by_priority(self, priority: str):
+        """Return all tasks with the given priority."""
+
+        priority = priority.upper()
+
+        if priority not in self.PRIORITY_LEVELS:
+            return []
+
+        priority_level = self.PRIORITY_LEVELS[priority]
+
+        return [
+            item[2]
+            for item in self._queue
+            if item[0] == priority_level
+        ]
