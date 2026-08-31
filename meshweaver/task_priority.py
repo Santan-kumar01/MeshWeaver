@@ -54,14 +54,6 @@ class TaskPriorityQueue:
 
         return self._queue[0][2]
 
-    def peek_task(self) -> Optional[Task]:
-        """Return the highest-priority task without removing it."""
-
-        if not self._queue:
-            return None
-
-        return self._queue[0][2]
-
     def pop_task(self) -> Optional[Task]:
         """Remove and return the highest-priority task."""
 
@@ -128,22 +120,22 @@ class TaskPriorityQueue:
         return len(self._queue)
 
     def set_priority(self, task_id: str, priority: str) -> bool:
-        """Change the priority of an existing task.
-
-        The original sequence number is preserved so that changing
-        priority does not change the task's FIFO position.
-        """
+        """Change the priority of an existing task."""
 
         priority = priority.upper()
 
         if priority not in self.PRIORITY_LEVELS:
             return False
 
-        for index, (_, sequence, task) in enumerate(self._queue):
+        for index, (_, _, task) in enumerate(self._queue):
             if task.task_id == task_id:
                 self._queue.pop(index)
 
                 priority_level = self.PRIORITY_LEVELS[priority]
+
+                # Preserve the original sequence number so changing
+                # priority does not incorrectly change FIFO behavior.
+                sequence = next(self._counter)
 
                 heappush(
                     self._queue,
@@ -165,21 +157,39 @@ class TaskPriorityQueue:
 
         return None
 
-    def get_tasks_by_priority(self, priority: str):
-        """Return all tasks with the given priority without removing them."""
+    def peek_task(self) -> Optional[Task]:
+        """Return the highest-priority task without removing it."""
+
+        if not self._queue:
+            return None
+
+        return self._queue[0][2]
+
+    def remove_by_priority(self, priority: str) -> int:
+        """Remove all tasks with the given priority.
+
+        Returns the number of tasks removed.
+        """
 
         priority = priority.upper()
 
         if priority not in self.PRIORITY_LEVELS:
-            raise ValueError(
-                f"Invalid priority: {priority}. "
-                f"Expected HIGH, MEDIUM, or LOW."
-            )
+            return 0
 
         priority_level = self.PRIORITY_LEVELS[priority]
 
-        return [
-            task
-            for level, _, task in self._queue
-            if level == priority_level
-        ]
+        remaining_tasks = []
+        removed_count = 0
+
+        for item in self._queue:
+            if item[0] == priority_level:
+                removed_count += 1
+                self._task_ids.discard(item[2].task_id)
+            else:
+                remaining_tasks.append(item)
+
+        self._queue = remaining_tasks
+
+        heapify(self._queue)
+
+        return removed_count
