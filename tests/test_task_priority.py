@@ -264,3 +264,34 @@ def test_validate_priority_rejects_invalid_priority():
         assert False
     except ValueError:
         assert True
+
+
+def test_count_by_priority():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task("high-1"), "HIGH")
+    queue.add_task(Task("high-2"), "HIGH")
+    queue.add_task(Task("medium-1"), "MEDIUM")
+    queue.add_task(Task("low-1"), "LOW")
+
+    assert queue.count_by_priority("HIGH") == 2
+    assert queue.count_by_priority("MEDIUM") == 1
+    assert queue.count_by_priority("LOW") == 1
+
+
+def test_count_by_priority_is_case_insensitive():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task("high-1"), "HIGH")
+    queue.add_task(Task("high-2"), "HIGH")
+
+    assert queue.count_by_priority("high") == 2
+    assert queue.count_by_priority("High") == 2
+
+
+def test_count_by_priority_returns_zero_for_invalid_priority():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task("task-1"), "HIGH")
+
+    assert queue.count_by_priority("URGENT") == 0

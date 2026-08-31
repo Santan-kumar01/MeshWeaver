@@ -197,3 +197,19 @@ class TaskPriorityQueue:
         heapify(self._queue)
 
         return removed_count
+
+    def count_by_priority(self, priority: str) -> int:
+        """Return the number of tasks with the given priority."""
+
+        priority = priority.upper()
+
+        if priority not in self.PRIORITY_LEVELS:
+            return 0
+
+        priority_level = self.PRIORITY_LEVELS[priority]
+
+        return sum(
+            1
+            for item in self._queue
+            if item[0] == priority_level
+        )
