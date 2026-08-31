@@ -86,7 +86,7 @@ class TaskPriorityQueue:
         return task_id in self._task_ids
 
     def is_empty(self) -> bool:
-        """Return True if the queue is empty."""
+        """Return whether the queue is empty."""
 
         return len(self._queue) == 0
 
@@ -129,13 +129,28 @@ class TaskPriorityQueue:
 
         for index, (_, sequence, task) in enumerate(self._queue):
             if task.task_id == task_id:
-                self._queue[index] = (
-                    self.PRIORITY_LEVELS[priority],
-                    sequence,
-                    task,
+                self._queue.pop(index)
+
+                priority_level = self.PRIORITY_LEVELS[priority]
+
+                # Keep the original sequence number so the task
+                # maintains its original FIFO position.
+                heappush(
+                    self._queue,
+                    (priority_level, sequence, task),
                 )
 
-                heapify(self._queue)
                 return True
 
         return False
+
+    def get_task_priority(self, task_id: str) -> Optional[str]:
+        """Return the priority of a task by its ID."""
+
+        for priority_level, _, task in self._queue:
+            if task.task_id == task_id:
+                for priority, level in self.PRIORITY_LEVELS.items():
+                    if level == priority_level:
+                        return priority
+
+        return None

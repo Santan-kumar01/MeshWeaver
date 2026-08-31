@@ -152,3 +152,36 @@ def test_set_priority_changes_task_priority():
 
     assert queue.set_priority("low-task", "HIGH") is True
     assert queue.pop_task().task_id == "low-task"
+
+
+def test_set_priority_invalid_priority():
+    queue = TaskPriorityQueue()
+
+    task = Task("task-1")
+    queue.add_task(task, "LOW")
+
+    assert queue.set_priority("task-1", "URGENT") is False
+    assert queue.get_task_priority("task-1") == "LOW"
+
+
+def test_set_priority_unknown_task():
+    queue = TaskPriorityQueue()
+
+    assert queue.set_priority("unknown-task", "HIGH") is False
+
+
+def test_get_task_priority():
+    queue = TaskPriorityQueue()
+
+    high = Task("high-task")
+    medium = Task("medium-task")
+    low = Task("low-task")
+
+    queue.add_task(high, "HIGH")
+    queue.add_task(medium, "MEDIUM")
+    queue.add_task(low, "LOW")
+
+    assert queue.get_task_priority("high-task") == "HIGH"
+    assert queue.get_task_priority("medium-task") == "MEDIUM"
+    assert queue.get_task_priority("low-task") == "LOW"
+    assert queue.get_task_priority("unknown-task") is None
