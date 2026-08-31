@@ -54,6 +54,14 @@ class TaskPriorityQueue:
 
         return self._queue[0][2]
 
+    def peek_task(self) -> Optional[Task]:
+        """Return the highest-priority task without removing it."""
+
+        if not self._queue:
+            return None
+
+        return self._queue[0][2]
+
     def pop_task(self) -> Optional[Task]:
         """Remove and return the highest-priority task."""
 
@@ -120,7 +128,11 @@ class TaskPriorityQueue:
         return len(self._queue)
 
     def set_priority(self, task_id: str, priority: str) -> bool:
-        """Change the priority of an existing task."""
+        """Change the priority of an existing task.
+
+        The original sequence number is preserved so that changing
+        priority does not change the task's FIFO position.
+        """
 
         priority = priority.upper()
 
@@ -133,8 +145,6 @@ class TaskPriorityQueue:
 
                 priority_level = self.PRIORITY_LEVELS[priority]
 
-                # Keep the original sequence number so the task
-                # maintains its original FIFO position.
                 heappush(
                     self._queue,
                     (priority_level, sequence, task),

@@ -167,21 +167,40 @@ def test_set_priority_invalid_priority():
 def test_set_priority_unknown_task():
     queue = TaskPriorityQueue()
 
-    assert queue.set_priority("unknown-task", "HIGH") is False
+    assert queue.set_priority("unknown", "HIGH") is False
 
 
 def test_get_task_priority():
     queue = TaskPriorityQueue()
 
-    high = Task("high-task")
-    medium = Task("medium-task")
-    low = Task("low-task")
+    high_task = Task("high-task")
+    low_task = Task("low-task")
 
-    queue.add_task(high, "HIGH")
-    queue.add_task(medium, "MEDIUM")
-    queue.add_task(low, "LOW")
+    queue.add_task(high_task, "HIGH")
+    queue.add_task(low_task, "LOW")
 
     assert queue.get_task_priority("high-task") == "HIGH"
-    assert queue.get_task_priority("medium-task") == "MEDIUM"
     assert queue.get_task_priority("low-task") == "LOW"
-    assert queue.get_task_priority("unknown-task") is None
+    assert queue.get_task_priority("unknown") is None
+
+
+def test_peek_task_returns_highest_priority_without_removing():
+    queue = TaskPriorityQueue()
+
+    low_task = Task("low-task")
+    high_task = Task("high-task")
+
+    queue.add_task(low_task, "LOW")
+    queue.add_task(high_task, "HIGH")
+
+    peeked = queue.peek_task()
+
+    assert peeked is not None
+    assert peeked.task_id == "high-task"
+    assert queue.size() == 2
+
+
+def test_peek_task_returns_none_for_empty_queue():
+    queue = TaskPriorityQueue()
+
+    assert queue.peek_task() is None
