@@ -61,14 +61,19 @@ class Task:
 
 
 class TaskRouter:
-    """Route tasks using CPU-aware selection, lifecycle
-    management, timeout, retry, result persistence,
-    execution history, and task queue integration.
-    """
+
+    
 
     def __init__(self):
+        # Local import prevents circular import:
+        # task_priority.py imports Task from router.py
+        from meshweaver.task_priority import TaskPriorityQueue
+
         self.resources = {}
         self.tasks = {}
+
+        # Priority queue integration
+        self.priority_queue = TaskPriorityQueue()
 
     def update_resource(
         self,
@@ -123,6 +128,52 @@ class TaskRouter:
 
         return task
 
+    def add_task(
+        self,
+        task_id: str,
+        priority: str = "MEDIUM",
+        max_retries: int = 3,
+        timeout: float = 30.0,
+    ) -> bool:
+        """Create and add a task to the priority queue."""
+
+        if task_id in self.tasks:
+            return False
+
+        task = self.create_task(
+            task_id=task_id,
+            max_retries=max_retries,
+            timeout=timeout,
+        )
+
+        return self.priority_queue.add_task(
+            task,
+            priority,
+        )
+
+    def get_next_task(self) -> Optional[Task]:
+        """Return the highest-priority pending task."""
+
+        return self.priority_queue.get_next_task()
+
+    def pop_next_task(self) -> Optional[Task]:
+        """Remove and return the highest-priority task."""
+
+        return self.priority_queue.pop_task()
+
+    def remove_queued_task(
+        self,
+        task_id: str,
+    ) -> bool:
+        """Remove a task from the priority queue."""
+
+        return self.priority_queue.remove_task(task_id)
+
+    def queue_size(self) -> int:
+        """Return the number of queued tasks."""
+
+        return self.priority_queue.size()
+
     def assign_task(
         self,
         task_id: str,
@@ -141,6 +192,9 @@ class TaskRouter:
         task.peer_id = peer.node_id
         task.status = TaskStatus.ASSIGNED
         task.error = None
+
+        # Remove task from priority queue after assignment.
+        self.priority_queue.remove_task(task_id)
 
         return True
 
