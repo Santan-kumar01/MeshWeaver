@@ -149,6 +149,15 @@ class TaskPriorityQueue:
 
         return False
 
+    def update_priority(self, task_id: str, priority: str) -> bool:
+        """Update the priority of an existing task.
+
+        Returns True when the task exists and the priority is updated.
+        Returns False when the task does not exist or the priority is invalid.
+        """
+
+        return self.set_priority(task_id, priority)
+
     def get_task_priority(self, task_id: str) -> Optional[str]:
         """Return the priority of a task by its ID."""
 
@@ -192,7 +201,6 @@ class TaskPriorityQueue:
                 remaining_tasks.append(item)
 
         self._queue = remaining_tasks
-
         heapify(self._queue)
 
         return removed_count

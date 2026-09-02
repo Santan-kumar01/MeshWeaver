@@ -354,7 +354,7 @@ def test_has_priority_invalid():
 
 
 # ---------------------------------------------------------
-# Priority Summary Tests - Commit #14
+# Priority Summary Tests
 # ---------------------------------------------------------
 
 
@@ -423,3 +423,49 @@ def test_priority_summary_updates_after_removal():
         "MEDIUM": 1,
         "LOW": 1,
     }
+
+
+# ---------------------------------------------------------
+# Priority Update Tests - Commit #15
+# ---------------------------------------------------------
+
+
+def test_update_priority_changes_task_priority():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(
+        Task(task_id="task-1"),
+        "LOW",
+    )
+
+    assert queue.update_priority(
+        "task-1",
+        "HIGH",
+    ) is True
+
+    assert queue.get_task_priority("task-1") == "HIGH"
+
+
+def test_update_priority_unknown_task():
+    queue = TaskPriorityQueue()
+
+    assert queue.update_priority(
+        "unknown",
+        "HIGH",
+    ) is False
+
+
+def test_update_priority_invalid_priority():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(
+        Task(task_id="task-1"),
+        "MEDIUM",
+    )
+
+    assert queue.update_priority(
+        "task-1",
+        "INVALID",
+    ) is False
+
+    assert queue.get_task_priority("task-1") == "MEDIUM"
