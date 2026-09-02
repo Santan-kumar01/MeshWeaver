@@ -265,3 +265,20 @@ class TaskPriorityQueue:
             "MEDIUM": self.count_by_priority("MEDIUM"),
             "LOW": self.count_by_priority("LOW"),
         }
+
+    def get_highest_priority(self) -> Optional[str]:
+        """Return the highest priority currently in the queue.
+
+        Returns None when the queue is empty.
+        """
+
+        if self.has_priority("HIGH"):
+            return "HIGH"
+
+        if self.has_priority("MEDIUM"):
+            return "MEDIUM"
+
+        if self.has_priority("LOW"):
+            return "LOW"
+
+        return None
