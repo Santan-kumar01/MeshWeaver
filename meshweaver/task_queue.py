@@ -16,18 +16,15 @@ class TaskQueue:
 
         Returns False if the task is already present.
         """
-
         if task.task_id in self._task_ids:
             return False
 
         self._queue.append(task)
         self._task_ids.add(task.task_id)
-
         return True
 
     def get_next_task(self) -> Optional[Task]:
         """Return the next task without removing it."""
-
         if not self._queue:
             return None
 
@@ -35,7 +32,6 @@ class TaskQueue:
 
     def pop_task(self) -> Optional[Task]:
         """Remove and return the next task."""
-
         if not self._queue:
             return None
 
@@ -46,7 +42,6 @@ class TaskQueue:
 
     def remove_task(self, task_id: str) -> bool:
         """Remove a task by its ID."""
-
         for task in self._queue:
             if task.task_id == task_id:
                 self._queue.remove(task)
@@ -57,21 +52,27 @@ class TaskQueue:
 
     def contains(self, task_id: str) -> bool:
         """Check whether a task exists in the queue."""
-
         return task_id in self._task_ids
 
     def is_empty(self) -> bool:
         """Return True if the queue is empty."""
-
         return len(self._queue) == 0
 
     def size(self) -> int:
         """Return the number of tasks in the queue."""
-
         return len(self._queue)
+
+    def statistics(self) -> dict:
+        """Return basic statistics about the task queue."""
+        total_tasks = len(self._queue)
+
+        return {
+            "total_tasks": total_tasks,
+            "queue_size": total_tasks,
+            "is_empty": total_tasks == 0,
+        }
 
     def clear(self) -> None:
         """Remove all tasks from the queue."""
-
         self._queue.clear()
         self._task_ids.clear()

@@ -93,3 +93,27 @@ def test_clear_queue():
     assert queue.is_empty() is True
     assert queue.size() == 0
     assert queue.contains("task-1") is False
+
+
+def test_queue_statistics():
+    queue = TaskQueue()
+
+    queue.add_task(Task("task-1"))
+    queue.add_task(Task("task-2"))
+    queue.add_task(Task("task-3"))
+
+    stats = queue.statistics()
+
+    assert stats["total_tasks"] == 3
+    assert stats["queue_size"] == 3
+    assert stats["is_empty"] is False
+
+
+def test_empty_queue_statistics():
+    queue = TaskQueue()
+
+    stats = queue.statistics()
+
+    assert stats["total_tasks"] == 0
+    assert stats["queue_size"] == 0
+    assert stats["is_empty"] is True

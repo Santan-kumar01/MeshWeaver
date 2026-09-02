@@ -62,7 +62,6 @@ class Task:
 
 class TaskRouter:
 
-    
 
     def __init__(self):
         # Local import prevents circular import:
