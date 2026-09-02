@@ -134,12 +134,11 @@ class TaskPriorityQueue:
         if priority not in self.PRIORITY_LEVELS:
             return False
 
-        for index, (_, _, task) in enumerate(self._queue):
+        for index, (_, sequence, task) in enumerate(self._queue):
             if task.task_id == task_id:
                 self._queue.pop(index)
 
                 priority_level = self.PRIORITY_LEVELS[priority]
-                sequence = next(self._counter)
 
                 heappush(
                     self._queue,
@@ -193,6 +192,7 @@ class TaskPriorityQueue:
                 remaining_tasks.append(item)
 
         self._queue = remaining_tasks
+
         heapify(self._queue)
 
         return removed_count
@@ -248,3 +248,12 @@ class TaskPriorityQueue:
             item[0] == priority_level
             for item in self._queue
         )
+
+    def priority_summary(self):
+        """Return the number of queued tasks for each priority."""
+
+        return {
+            "HIGH": self.count_by_priority("HIGH"),
+            "MEDIUM": self.count_by_priority("MEDIUM"),
+            "LOW": self.count_by_priority("LOW"),
+        }
