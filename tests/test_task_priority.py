@@ -464,3 +464,49 @@ def test_get_highest_priority_after_removing_high():
     queue.remove_task("high-1")
 
     assert queue.get_highest_priority() == "MEDIUM"
+
+
+# Commit #17 tests
+
+def test_get_lowest_priority_returns_low():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task(task_id="high-1"), "HIGH")
+    queue.add_task(Task(task_id="medium-1"), "MEDIUM")
+    queue.add_task(Task(task_id="low-1"), "LOW")
+
+    assert queue.get_lowest_priority() == "LOW"
+
+
+def test_get_lowest_priority_returns_medium():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task(task_id="high-1"), "HIGH")
+    queue.add_task(Task(task_id="medium-1"), "MEDIUM")
+
+    assert queue.get_lowest_priority() == "MEDIUM"
+
+
+def test_get_lowest_priority_returns_high():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task(task_id="high-1"), "HIGH")
+
+    assert queue.get_lowest_priority() == "HIGH"
+
+
+def test_get_lowest_priority_empty_queue():
+    queue = TaskPriorityQueue()
+
+    assert queue.get_lowest_priority() is None
+
+
+def test_get_lowest_priority_after_removing_low():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task(task_id="low-1"), "LOW")
+    queue.add_task(Task(task_id="medium-1"), "MEDIUM")
+
+    queue.remove_task("low-1")
+
+    assert queue.get_lowest_priority() == "MEDIUM"

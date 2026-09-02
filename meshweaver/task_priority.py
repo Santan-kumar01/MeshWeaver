@@ -282,3 +282,20 @@ class TaskPriorityQueue:
             return "LOW"
 
         return None
+
+    def get_lowest_priority(self) -> Optional[str]:
+        """Return the lowest priority currently in the queue.
+
+        Returns None when the queue is empty.
+        """
+
+        if self.has_priority("LOW"):
+            return "LOW"
+
+        if self.has_priority("MEDIUM"):
+            return "MEDIUM"
+
+        if self.has_priority("HIGH"):
+            return "HIGH"
+
+        return None
