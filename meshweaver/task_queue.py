@@ -63,13 +63,19 @@ class TaskQueue:
         return len(self._queue)
 
     def statistics(self) -> dict:
-        """Return basic statistics about the task queue."""
+        """Return detailed statistics about the task queue."""
         total_tasks = len(self._queue)
 
         return {
             "total_tasks": total_tasks,
             "queue_size": total_tasks,
             "is_empty": total_tasks == 0,
+            "task_ids": [task.task_id for task in self._queue],
+            "next_task_id": (
+                self._queue[0].task_id
+                if self._queue
+                else None
+            ),
         }
 
     def clear(self) -> None:
