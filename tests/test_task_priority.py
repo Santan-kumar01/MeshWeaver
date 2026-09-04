@@ -537,3 +537,29 @@ def test_get_priority_tasks_empty_queue():
         "MEDIUM": [],
         "LOW": [],
     }
+
+
+# Commit #19 tests
+
+def test_get_tasks_in_priority_order():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task(task_id="low-1"), "LOW")
+    queue.add_task(Task(task_id="high-1"), "HIGH")
+    queue.add_task(Task(task_id="medium-1"), "MEDIUM")
+    queue.add_task(Task(task_id="high-2"), "HIGH")
+
+    tasks = queue.get_tasks_in_priority_order()
+
+    assert [task.task_id for task in tasks] == [
+        "high-1",
+        "high-2",
+        "medium-1",
+        "low-1",
+    ]
+
+
+def test_get_tasks_in_priority_order_empty_queue():
+    queue = TaskPriorityQueue()
+
+    assert queue.get_tasks_in_priority_order() == []
