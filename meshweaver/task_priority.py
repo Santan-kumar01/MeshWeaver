@@ -299,3 +299,21 @@ class TaskPriorityQueue:
             return "HIGH"
 
         return None
+
+    def get_priority_tasks(self):
+        """Return task IDs grouped by priority."""
+
+        return {
+            "HIGH": [
+                task.task_id
+                for task in self.get_tasks_by_priority("HIGH")
+            ],
+            "MEDIUM": [
+                task.task_id
+                for task in self.get_tasks_by_priority("MEDIUM")
+            ],
+            "LOW": [
+                task.task_id
+                for task in self.get_tasks_by_priority("LOW")
+            ],
+        }

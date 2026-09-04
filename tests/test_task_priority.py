@@ -510,3 +510,30 @@ def test_get_lowest_priority_after_removing_low():
     queue.remove_task("low-1")
 
     assert queue.get_lowest_priority() == "MEDIUM"
+
+
+# Commit #18 tests
+
+def test_get_priority_tasks_groups_task_ids_by_priority():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task(task_id="high-1"), "HIGH")
+    queue.add_task(Task(task_id="high-2"), "HIGH")
+    queue.add_task(Task(task_id="medium-1"), "MEDIUM")
+    queue.add_task(Task(task_id="low-1"), "LOW")
+
+    assert queue.get_priority_tasks() == {
+        "HIGH": ["high-1", "high-2"],
+        "MEDIUM": ["medium-1"],
+        "LOW": ["low-1"],
+    }
+
+
+def test_get_priority_tasks_empty_queue():
+    queue = TaskPriorityQueue()
+
+    assert queue.get_priority_tasks() == {
+        "HIGH": [],
+        "MEDIUM": [],
+        "LOW": [],
+    }
