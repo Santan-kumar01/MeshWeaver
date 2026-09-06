@@ -86,3 +86,22 @@ def test_empty_broker():
     assert stats["total_tasks"] == 0
     assert stats["is_empty"] is True
     assert stats["next_task_id"] is None
+
+def test_is_empty():
+    broker = TaskBroker()
+
+    assert broker.is_empty() is True
+
+    broker.submit_task("task-1")
+
+    assert broker.is_empty() is False
+
+
+def test_has_tasks():
+    broker = TaskBroker()
+
+    assert broker.has_tasks() is False
+
+    broker.submit_task("task-1")
+
+    assert broker.has_tasks() is True    

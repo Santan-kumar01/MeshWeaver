@@ -56,6 +56,16 @@ class TaskBroker:
 
         return self.queue.size()
 
+    def is_empty(self) -> bool:
+        """Return True when the task queue is empty."""
+
+        return self.queue.size() == 0
+
+    def has_tasks(self) -> bool:
+        """Return True when the task queue contains tasks."""
+
+        return not self.is_empty()
+
     def statistics(self) -> dict:
         """Return current broker queue statistics."""
 
