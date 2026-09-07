@@ -105,3 +105,27 @@ def test_has_tasks():
     broker.submit_task("task-1")
 
     assert broker.has_tasks() is True    
+
+def test_get_queue_snapshot():
+    broker = TaskBroker()
+
+    broker.submit_task("task-1")
+    broker.submit_task("task-2")
+
+    snapshot = broker.get_queue_snapshot()
+
+    assert snapshot["queue_size"] == 2
+    assert snapshot["is_empty"] is False
+    assert snapshot["next_task_id"] == "task-1"
+    assert snapshot["task_ids"] == ["task-1", "task-2"]
+
+
+def test_empty_queue_snapshot():
+    broker = TaskBroker()
+
+    snapshot = broker.get_queue_snapshot()
+
+    assert snapshot["queue_size"] == 0
+    assert snapshot["is_empty"] is True
+    assert snapshot["next_task_id"] is None
+    assert snapshot["task_ids"] == []    

@@ -71,6 +71,18 @@ class TaskBroker:
 
         return self.queue.statistics()
 
+    def get_queue_snapshot(self) -> dict:
+        """Return a snapshot of the current queue state."""
+
+        stats = self.queue.statistics()
+
+        return {
+            "queue_size": stats["queue_size"],
+            "is_empty": stats["is_empty"],
+            "next_task_id": stats["next_task_id"],
+            "task_ids": stats["task_ids"],
+        }
+
     def clear_queue(self) -> None:
         """Remove all queued tasks."""
 
