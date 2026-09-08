@@ -563,3 +563,25 @@ def test_get_tasks_in_priority_order_empty_queue():
     queue = TaskPriorityQueue()
 
     assert queue.get_tasks_in_priority_order() == []
+
+
+# Commit #20 tests
+
+def test_get_tasks_in_priority_order_preserves_fifo():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task(task_id="high-1"), "HIGH")
+    queue.add_task(Task(task_id="high-2"), "HIGH")
+    queue.add_task(Task(task_id="medium-1"), "MEDIUM")
+    queue.add_task(Task(task_id="low-1"), "LOW")
+    queue.add_task(Task(task_id="low-2"), "LOW")
+
+    tasks = queue.get_tasks_in_priority_order()
+
+    assert [task.task_id for task in tasks] == [
+        "high-1",
+        "high-2",
+        "medium-1",
+        "low-1",
+        "low-2",
+    ]
