@@ -77,6 +77,9 @@ class TaskQueue:
                 else None
             ),
         }
+    def view(){
+        print("output")
+    }
 
     def clear(self) -> None:
         """Remove all tasks from the queue."""
