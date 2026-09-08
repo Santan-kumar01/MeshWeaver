@@ -585,3 +585,21 @@ def test_get_tasks_in_priority_order_preserves_fifo():
         "low-1",
         "low-2",
     ]
+
+
+# Commit #21 tests
+
+def test_get_tasks_in_priority_order_case_insensitive():
+    queue = TaskPriorityQueue()
+
+    queue.add_task(Task(task_id="low-1"), "low")
+    queue.add_task(Task(task_id="high-1"), "high")
+    queue.add_task(Task(task_id="medium-1"), "medium")
+
+    tasks = queue.get_tasks_in_priority_order()
+
+    assert [task.task_id for task in tasks] == [
+        "high-1",
+        "medium-1",
+        "low-1",
+    ]
