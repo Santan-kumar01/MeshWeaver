@@ -142,3 +142,16 @@ def test_queue_snapshot_includes_total_tasks():
     assert snapshot["queue_size"] == 3
     assert snapshot["is_empty"] is False
     assert snapshot["task_ids"] == ["task-1", "task-2", "task-3"]
+
+def test_queue_snapshot_status():
+    broker = TaskBroker()
+
+    empty_snapshot = broker.get_queue_snapshot()
+
+    assert empty_snapshot["status"] == "EMPTY"
+
+    broker.submit_task("task-1")
+
+    ready_snapshot = broker.get_queue_snapshot()
+
+    assert ready_snapshot["status"] == "READY"    
